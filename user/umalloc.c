@@ -25,6 +25,8 @@ void
 free(void *ap)
 {
   Header *bp, *p;
+  if (ap == 0) // 新增判空
+    return;
 
   bp = (Header*)ap - 1;
   for(p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
