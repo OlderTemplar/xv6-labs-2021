@@ -432,3 +432,47 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+
+void
+vmprint_help(char* prefix, pagetable_t pagetable) {
+  int len = strlen(prefix);
+  char cp[9];
+  strncpy(cp, prefix, len);
+  cp[len] = ' ';
+  cp[len + 1] = '.';
+  cp[len + 2] = '.';
+  cp[len + 3] = '\0';
+
+  for (int i = 0; i < 512; i++) {
+
+    if (pagetable[i] & PTE_V) {
+      printf("%s%d: pte %p pa %p\n", prefix, i, pagetable[i], (pagetable[i] >> 10) << 12);
+
+      // if not a leaf page
+      if ((pagetable[i] & (PTE_R | PTE_W | PTE_X)) == 0) {
+        vmprint_help(cp, (pagetable_t)PTE2PA(pagetable[i]));
+      }
+
+    }
+
+  }
+
+}
+
+// Print a process's page table
+// Return 0 on success, -1 on error.
+int
+vmprint(pagetable_t pagetable) {
+  char* prefix = "..";
+
+  if (pagetable == 0) {
+    printf("argument pagetable is null\n");
+    return -1;
+  }
+
+  printf("page table %p\n", pagetable);
+  vmprint_help(prefix, pagetable);
+  return 0;
+}
+
