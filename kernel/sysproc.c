@@ -81,6 +81,48 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 s_va;  // vitual address start in process space
+  int num;
+  uint64 mask_p; // mask address in process space
+  uint64 buff = 0;
+  int max_page = 64;
+  struct proc* p = myproc();
+  pte_t* pte;
+
+  if (argaddr(0, &s_va) < 0)
+    return -1;
+  if (argint(1, &num) < 0)
+    return -1;
+  if (argaddr(2, &mask_p) < 0)
+    return -1;
+  if (num > max_page) {
+    printf("pgaccess:too many pages to check\n");
+    return -1;
+  }
+
+  // alignment
+  s_va = (s_va >> 12) << 12;
+
+
+  for (int i = 0; i < num; i++) {
+    pte = walk(p->pagetable, s_va, 0);
+    if (pte == 0) {
+      printf("pgaccess:some virtual address has not been allocated.\n");
+      return -1;
+    }
+
+    // record and clear
+    if (*pte & PTE_A) 
+    {
+      buff = buff | (1 << i);
+      *pte = ~(~(*pte) | PTE_A);
+    }
+
+    s_va += PGSIZE;
+  }
+
+  copyout(p->pagetable, mask_p, (char*)&buff, 8);
+
   return 0;
 }
 #endif
