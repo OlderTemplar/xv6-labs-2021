@@ -16,6 +16,7 @@
 #include "proc.h"
 
 volatile int panicked = 0;
+void backtrace(void)；
 
 // lock to avoid interleaving concurrent printf's.
 static struct {
@@ -121,6 +122,7 @@ panic(char *s)
   printf("panic: ");
   printf(s);
   printf("\n");
+  backtrace();
   panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
@@ -131,4 +133,26 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+// only used for kernel
+void 
+backtrace(void) {
+  printf("backtrace:\n");
+  uint64 s0;
+  uint64 end; // end of loop, as the top of kernel stack
+  uint64 pointer;
+
+  // s0 saves the current frame pointer
+  s0 = r_fp();
+  end = PGROUNDUP(s0);
+
+  while (s0 != end) {
+    pointer = s0 - 8;
+    printf("%p\n", *(uint64*)pointer);
+
+    // load privious frame pointer to s0;
+    pointer = s0 - 16;
+    s0 = *(uint64*)pointer;
+  }
 }
