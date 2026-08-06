@@ -111,8 +111,8 @@ usertrapret(void)
   
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
-  x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
-  x |= SSTATUS_SPIE; // enable interrupts in user mode
+  x &= ~SSTATUS_SPP; // clear SPP to 0 for sret to return to user mode
+  x |= SSTATUS_SPIE; // enable interrupts in supervisor mode
   w_sstatus(x);
 
   // set S Exception Program Counter to the saved user pc.
