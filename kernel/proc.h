@@ -105,4 +105,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int time_after_last_call;    // Time after last calling handler
+  int interval;                // used for sys_sigalarm, 0 means being inhibited
+  void (*handler)();           // Desginated by sys_sigalar
+  uint64 s_pc;                 // Used for returning from sys_sigalarm
+  int sig_flag;                // avoid entering handler before last handler call finish
+  struct trapframe trapframe_copy;
 };

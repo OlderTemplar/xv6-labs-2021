@@ -78,7 +78,55 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
+  {
+    p->time_after_last_call++;
+
+    if (!p->sig_flag)
+    {
+      if (p->interval) {
+        if (p->time_after_last_call % p->interval == 0) {
+          p->trapframe_copy.epc = p->trapframe->epc;
+          p->trapframe_copy.ra = p->trapframe->ra;
+          p->trapframe_copy.sp = p->trapframe->sp;
+          p->trapframe_copy.gp = p->trapframe->gp;
+          p->trapframe_copy.tp = p->trapframe->tp;
+          p->trapframe_copy.t0 = p->trapframe->t0;
+          p->trapframe_copy.t1 = p->trapframe->t1;
+          p->trapframe_copy.t2 = p->trapframe->t2;
+          p->trapframe_copy.s0 = p->trapframe->s0;
+          p->trapframe_copy.s1 = p->trapframe->s1;
+          p->trapframe_copy.a0 = p->trapframe->a0;
+          p->trapframe_copy.a1 = p->trapframe->a1;
+          p->trapframe_copy.a2 = p->trapframe->a2;
+          p->trapframe_copy.a3 = p->trapframe->a3;
+          p->trapframe_copy.a4 = p->trapframe->a4;
+          p->trapframe_copy.a5 = p->trapframe->a5;
+          p->trapframe_copy.a6 = p->trapframe->a6;
+          p->trapframe_copy.a7 = p->trapframe->a7;
+          p->trapframe_copy.s2 = p->trapframe->s2;
+          p->trapframe_copy.s3 = p->trapframe->s3;
+          p->trapframe_copy.s4 = p->trapframe->s4;
+          p->trapframe_copy.s5 = p->trapframe->s5;
+          p->trapframe_copy.s6 = p->trapframe->s6;
+          p->trapframe_copy.s7 = p->trapframe->s7;
+          p->trapframe_copy.s8 = p->trapframe->s8;
+          p->trapframe_copy.s9 = p->trapframe->s9;
+          p->trapframe_copy.s10 = p->trapframe->s10;
+          p->trapframe_copy.s11 = p->trapframe->s11;
+          p->trapframe_copy.t3 = p->trapframe->t3;
+          p->trapframe_copy.t4 = p->trapframe->t4;
+          p->trapframe_copy.t5 = p->trapframe->t5;
+          p->trapframe_copy.t6 = p->trapframe->t6;
+
+          p->time_after_last_call -= p->interval;
+          p->s_pc = p->trapframe->epc;  // Address of the instruction when clock came
+          p->trapframe->epc = (uint64)(p->handler);
+          p->sig_flag = 1;
+        }
+      }
+    }
     yield();
+  }
 
   usertrapret();
 }
@@ -151,7 +199,13 @@ kerneltrap()
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  {
+    struct proc* p = myproc();
+
+    p->time_after_last_call++;
+
     yield();
+  }
 
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.

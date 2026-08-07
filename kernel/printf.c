@@ -16,7 +16,7 @@
 #include "proc.h"
 
 volatile int panicked = 0;
-void backtrace(void)；
+void backtrace(void);
 
 // lock to avoid interleaving concurrent printf's.
 static struct {
