@@ -49,9 +49,8 @@ freerange(void *pa_start, void *pa_end)
 void
 kfree(void *pa)
 {
-  //page_count[(uint64)pa / PGSIZE]--;
+  page_count[(uint64)pa / PGSIZE]--;
   if (page_count[(uint64)pa / PGSIZE] < 0) { 
-    //printf("negative page count, index %d, count %d\n", (uint64)pa / PGSIZE, page_count[(uint64)pa / PGSIZE]);
     page_count[(uint64)pa / PGSIZE] = 0; 
   }
   if (page_count[(uint64)pa / PGSIZE] > 0)return;
@@ -69,7 +68,6 @@ kfree(void *pa)
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
-  //printf("free succeeds!\n");
   release(&kmem.lock);
 }
 

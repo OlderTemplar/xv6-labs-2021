@@ -85,7 +85,6 @@ usertrap(void)
       //printf("pa:%p,   old pa:%p\n\n", pa, old_pa);
 
       memmove((uint64*)pa, (uint64*)old_pa, PGSIZE);
-      page_count[(uint64)old_pa / PGSIZE]--;
       kfree((uint64*)old_pa);
 
       *pte = *pte & ~((~0ULL >> 10) << 10); // 保留后10位，其余位清0
