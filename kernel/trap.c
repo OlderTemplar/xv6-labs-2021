@@ -67,7 +67,39 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  }
+  else if (r_scause() == 15) {
+    uint64* pte;
+    uint64 va = r_stval();
+
+    if ((pte = walk(p->pagetable, va, 0)) == 0) {
+      printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
+      panic("page fault: pte should exist");
+    }
+    //printf("pte:%x,      stval:%x\npte address:%p\npid:%d\n", *pte, r_stval(), pte, myproc()->pid);
+
+    if((*pte) & PTE_COW)
+    {
+      uint64 pa = (uint64)(kalloc());
+      uint64 old_pa = walkaddr(p->pagetable, va);
+      //printf("pa:%p,   old pa:%p\n\n", pa, old_pa);
+
+      memmove((uint64*)pa, (uint64*)old_pa, PGSIZE);
+      page_count[(uint64)old_pa / PGSIZE]--;
+      kfree((uint64*)old_pa);
+
+      *pte = *pte & ~((~0ULL >> 10) << 10); // 保留后10位，其余位清0
+      *pte = PA2PTE(pa) | *pte;
+      *pte = (*pte) | PTE_W;
+    }
+    else {
+      printf("usertrap(): page fault scause %p pid=%d\n", r_scause(), p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      p->killed = 1;
+    }
+
+  }
+  else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;

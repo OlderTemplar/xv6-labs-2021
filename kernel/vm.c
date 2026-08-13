@@ -151,6 +151,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+    //page_count[pa / PGSIZE]++;
     if(a == last)
       break;
     a += PGSIZE;
@@ -180,6 +181,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not a leaf");
     if(do_free){
       uint64 pa = PTE2PA(*pte);
+      page_count[(uint64)pa / PGSIZE]--;
       kfree((void*)pa);
     }
     *pte = 0;
@@ -278,6 +280,7 @@ freewalk(pagetable_t pagetable)
       panic("freewalk: leaf");
     }
   }
+  page_count[(uint64)pagetable / PGSIZE]--;
   kfree((void*)pagetable);
 }
 
@@ -303,7 +306,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -311,14 +313,12 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    flags = (PTE_FLAGS(*pte) & (~PTE_W)) | PTE_COW;
+    *pte = ((*pte) & (~PTE_W)) | PTE_COW;
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
+    page_count[pa / PGSIZE]++;
   }
   return 0;
 
@@ -347,12 +347,31 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  uint64* pte;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
+    pte = walk(pagetable, va0, 0);
+
+    if (pa0 == 0)
       return -1;
+
+    if (((*pte) & PTE_W) == 0) {
+      if ((*pte) & PTE_COW) {
+        uint64 pa = (uint64)(kalloc());
+        uint64 old_pa = pa0;
+
+        memmove((uint64*)pa, (uint64*)old_pa, PGSIZE);
+
+        *pte = *pte & ~((~0ULL >> 10) << 10);
+        *pte = PA2PTE(pa) | *pte;
+        *pte = (*pte) | PTE_W;
+
+        pa0 = pa;
+      }
+    }
+
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
