@@ -81,7 +81,7 @@ pte_t *
 walk(pagetable_t pagetable, uint64 va, int alloc)
 {
   if(va >= MAXVA)
-    panic("walk");
+    return (pte_t*)(uint64)(-1);
 
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
@@ -360,6 +360,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
         uint64 old_pa = pa0;
 
         memmove((uint64*)pa, (uint64*)old_pa, PGSIZE);
+        kfree((uint64*)old_pa);
 
         *pte = *pte & ~((~0ULL >> 10) << 10);
         *pte = PA2PTE(pa) | *pte;

@@ -76,20 +76,27 @@ usertrap(void)
       printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
       panic("page fault: pte should exist");
     }
-    //printf("pte:%x,      stval:%x\npte address:%p\npid:%d\n", *pte, r_stval(), pte, myproc()->pid);
+    if ((uint64)(pte = walk(p->pagetable, va, 0)) == 0xffffffffffffffffL) { 
+      printf("don't write address which is greater than MAXVA\n");
+      p->killed = 1;
+      goto ret; 
+    }
 
     if((*pte) & PTE_COW)
     {
       uint64 pa = (uint64)(kalloc());
-      uint64 old_pa = walkaddr(p->pagetable, va);
-      //printf("pa:%p,   old pa:%p\n\n", pa, old_pa);
+      if (pa != 0)
+      {
+        uint64 old_pa = walkaddr(p->pagetable, va);
 
-      memmove((uint64*)pa, (uint64*)old_pa, PGSIZE);
-      kfree((uint64*)old_pa);
+        memmove((uint64*)pa, (uint64*)old_pa, PGSIZE);
+        kfree((uint64*)old_pa);
 
-      *pte = *pte & ~((~0ULL >> 10) << 10); // 保留后10位，其余位清0
-      *pte = PA2PTE(pa) | *pte;
-      *pte = (*pte) | PTE_W;
+        *pte = *pte & ~((~0ULL >> 10) << 10); // 保留后10位，其余位清0
+        *pte = PA2PTE(pa) | *pte;
+        *pte = (*pte) | PTE_W;
+      }
+      else p->killed = 1;
     }
     else {
       printf("usertrap(): page fault scause %p pid=%d\n", r_scause(), p->pid);
@@ -103,6 +110,9 @@ usertrap(void)
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
+
+
+ret:
 
   if(p->killed)
     exit(-1);
